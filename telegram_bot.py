@@ -32,19 +32,36 @@ SPOUSE_NAME, CHILDREN_NAME, CHILDREN_AGE = range(3)
 EXCEL_FILE = "family_data.xlsx"
 
 # ⚠️ ជំនួសលេខ 123456789 ដោយ Telegram User ID របស់បង (មើលពី @userinfobot)
-ADMIN_USER_ID = 2127600841
+ADMIN_USER_ID = 2127600841 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
     user_first_name = update.message.from_user.first_name
+
+    # ---------------- ពិនិត្យមើលថា តើគាត់ធ្លាប់បំពេញព័ត៌មានរួចហើយឬនៅ ----------------
+    if os.path.exists(EXCEL_FILE):
+        try:
+            df = pd.read_excel(EXCEL_FILE)
+            # ពិនិត្យមើល User ID ក្នុង column 'Telegram User ID'
+            if 'Telegram User ID' in df.columns and user_id in df['Telegram User ID'].values:
+                await update.message.reply_text(
+                    f"⚠️ **សុំទោស {user_first_name}!** គណនីរបស់អ្នកបានបំពេញព័ត៌មាននៅក្នុងប្រព័ន្ធរួចរាល់ហើយ។\n"
+                    f"អ្នកមិនអាចបញ្ចូលទិន្នន័យសាជាថ្មីម្តងទៀតបានទេ។"
+                )
+                return ConversationHandler.END
+        except Exception as e:
+            logging.error(f"Error reading Excel file: {e}")
+    # --------------------------------------------------------------------------------
+
     await update.message.reply_text(
         f"ជម្រាបសួរ {user_first_name}! ខ្ញុំជា Bot កត់ត្រាទិន្នន័យគ្រួសារ។\n\n"
-        f"សូម Reply ឆ្លើយតបសារនេះដោយបញ្ចូល **ឈ្មោះប្តី ឬប្រពន្ធ** របស់អ្នក៖"
+        f"សូមបញ្ចូល **ឈ្មោះប្តី ឬប្រពន្ធ និងអាយុ** របស់អ្នក៖"
     )
     return SPOUSE_NAME
 
 async def get_spouse_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['spouse_name'] = update.message.text
-    await update.message.reply_text("សូមបញ្ចូល **ឈ្មោះកូន** របស់អ្នក (បើមានច្រើន បំបែកដោយសញ្ញាក្បៀស `,`)៖")
+    await update.message.reply_text("សូមបញ្ចូល **ឈ្មោះកូន និងអាយុ ** របស់អ្នក (បើមានច្រើន បំបែកដោយសញ្ញាក្បៀស `,`)៖")
     return CHILDREN_NAME
 
 async def get_children_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -84,7 +101,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def export_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    # ពិនិត្យថាមានតែ Admin ទេដែលអាចដកទិន្នន័យបាន
     if user_id != ADMIN_USER_ID:
         await update.message.reply_text("❌ សុំទោស! មានតែ Admin ប៉ុណ្ណោះដែលមានសិទ្ធិទាញយកឯកសារ Excel នេះ។")
         return
@@ -112,7 +128,6 @@ if __name__ == '__main__':
             CHILDREN_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_to_excel)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
-        # បន្ថែម ២ បន្ទាត់នេះ ដើម្បបំបែកការសន្ទនាតាមបុគ្គលម្នាក់ៗក្នុង Group
         per_chat=True,
         per_user=True,
     )
