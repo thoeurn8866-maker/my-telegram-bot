@@ -9,7 +9,7 @@ from telegram.ext import (
     ContextTypes, ConversationHandler, filters
 )
 
-# --- ផ្នែកបង្កើត Fake Web Server សម្រាប់ Render Free Plan ---
+# --- ផ្នែក Web Server សម្រាប់ Render Free Plan ---
 web_app = Flask('')
 
 @web_app.route('/')
@@ -20,7 +20,6 @@ def keep_alive():
     port = int(os.environ.get("PORT", 8080))
     web_app.run(host='0.0.0.0', port=port)
 
-# ដំឡើង Web Server ឱ្យដើរអមជាមួយ Bot
 threading.Thread(target=keep_alive).start()
 # --------------------------------------------------------
 
@@ -32,8 +31,15 @@ logging.basicConfig(
 SPOUSE_NAME, CHILDREN_NAME, CHILDREN_AGE = range(3)
 EXCEL_FILE = "family_data.xlsx"
 
+# ⚠️ ជំនួសលេខ 123456789 ដោយ Telegram User ID របស់បង (មើលពី @userinfobot)
+ADMIN_USER_ID = 2127600841
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ជម្រាបសួរ! សូមបញ្ចូល **ឈ្មោះប្តី ឬប្រពន្ធ** របស់អ្នក៖")
+    user_first_name = update.message.from_user.first_name
+    await update.message.reply_text(
+        f"ជម្រាបសួរ {user_first_name}! ខ្ញុំជា Bot កត់ត្រាទិន្នន័យគ្រួសារ។\n\n"
+        f"សូម Reply ឆ្លើយតបសារនេះដោយបញ្ចូល **ឈ្មោះប្តី ឬប្រពន្ធ** របស់អ្នក៖"
+    )
     return SPOUSE_NAME
 
 async def get_spouse_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -68,25 +74,21 @@ async def save_to_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         df_new.to_excel(EXCEL_FILE, index=False)
 
-    await update.message.reply_text("✅ **បានរក្សាទុកទិន្នន័យជោគជ័យ!**\nវាយ `/export` ដើម្បីទាញយក Excel។")
+    await update.message.reply_text(f"✅ **បានរក្សាទុកទិន្នន័យរបស់ {user_name} ជោគជ័យ!**")
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("បានបោះបង់ប្រតិបត្តិការ។")
+    await update.message.reply_text("បានបោះបង់ការបញ្ចូលទិន្នន័យ។")
     return ConversationHandler.END
-
-# ⚠️ ជំនួសលេខ 123456789 ដោយ Telegram User ID ពិតប្រាកដរបស់បង (ជាលេខ)
-ADMIN_USER_ID = 2127600841 
 
 async def export_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    # ពិនិត្យមើលថា តើអ្នកដែលវាយ /export ជា Admin ដែរឬទេ?
+    # ពិនិត្យថាមានតែ Admin ទេដែលអាចដកទិន្នន័យបាន
     if user_id != ADMIN_USER_ID:
-        await update.message.reply_text("❌ សុំទោស! មានតែ Admin ប៉ុណ្ណោះដែលមានសិទ្ធិទាញយកឯកសារ Excel នេះបាន។")
+        await update.message.reply_text("❌ សុំទោស! មានតែ Admin ប៉ុណ្ណោះដែលមានសិទ្ធិទាញយកឯកសារ Excel នេះ។")
         return
 
-    # ប្រសិនបើជា Admin ឱ្យទាញយកបានធម្មតា
     if os.path.exists(EXCEL_FILE):
         await update.message.reply_document(
             document=open(EXCEL_FILE, 'rb'),
@@ -110,6 +112,9 @@ if __name__ == '__main__':
             CHILDREN_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_to_excel)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
+        # បន្ថែម ២ បន្ទាត់នេះ ដើម្បបំបែកការសន្ទនាតាមបុគ្គលម្នាក់ៗក្នុង Group
+        per_chat=True,
+        per_user=True,
     )
 
     app.add_handler(conv_handler)
