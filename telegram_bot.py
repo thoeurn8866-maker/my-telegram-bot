@@ -47,7 +47,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if 'Telegram User ID' in df.columns and user_id in df['Telegram User ID'].values:
                 await update.message.reply_text(
                     f"⚠️ **ជម្រាបសួរ {user_first_name}!** គណនីរបស់អ្នកបានបំពេញព័ត៌មាននៅក្នុងប្រព័ន្ធរួចរាល់ហើយ។\n\n"
-                    f"ប្រសិនបើចង់កែប្រែព័ត៌មាន សូមទាក់ទងទៅ Admin។"
+                    f"ប្រសិនបើចង់កែប្រែព័ត៌មាន សូមទាក់ទងទៅលោក ឡេង ប៊ុនធឿន, ទូរសព្ទ 089976679។"
                 )
                 return ConversationHandler.END
         except Exception as e:
