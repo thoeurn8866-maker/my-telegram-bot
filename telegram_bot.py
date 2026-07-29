@@ -3,7 +3,7 @@ import threading
 import logging
 import pandas as pd
 from flask import Flask
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, 
     ContextTypes, ConversationHandler, filters
@@ -31,7 +31,7 @@ logging.basicConfig(
 SPOUSE_NAME, CHILDREN_NAME, CHILDREN_AGE = range(3)
 EXCEL_FILE = "family_data.xlsx"
 
-# ⚠️ ជំនួសលេខ ID Admin របស់អ្នកនៅទីនេះ (ជាលេខ)
+# ⚠️ ជំនួសលេខ 123456789 ដោយ Telegram User ID របស់បង (មើលពី @userinfobot)
 ADMIN_USER_ID = 2127600841 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -40,6 +40,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.message.from_user.id
     user_first_name = update.message.from_user.first_name
+    chat_type = update.message.chat.type
 
     # ---------------- ពិនិត្យមើលថា តើគាត់ធ្លាប់បំពេញព័ត៌មានរួចហើយឬនៅ ----------------
     if os.path.exists(EXCEL_FILE):
@@ -55,6 +56,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logging.error(f"Error reading Excel file: {e}")
     # --------------------------------------------------------------------------------
 
+    # ប្រសិនបើចុច /start នៅក្នុង Telegram Group
+    if chat_type in ['group', 'supergroup']:
+        bot_username = context.bot.username
+        # បង្កើតប៊ូតុងសម្រាប់ចុចទៅ Private Chat
+        keyboard = [
+            [InlineKeyboardButton("💬 ចុចទីនេះដើម្បីបំពេញព័ត៌មាន (Private)", url=f"https://t.me/{bot_username}?start=fill_data")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            f"ជម្រាបសួរ {user_first_name}! ដើម្បីរក្សាការសម្ងាត់ព័ត៌មាន សូមចុចប៊ូតុងខាងក្រោមដើម្បីបំពេញព័ត៌មាននៅក្នុង Chat ផ្ទាល់ជាមួយ Bot ៖",
+            reply_markup=reply_markup
+        )
+        return ConversationHandler.END
+
+    # ប្រសិនបើនៅក្នុង Private Chat ចាប់ផ្តើមសួរសំណួរ
     await update.message.reply_text(
         f"ជម្រាបសួរ {user_first_name}! ខ្ញុំជា Bot កត់ត្រាទិន្នន័យគ្រួសារ។\n\n"
         f"សូមបញ្ចូល **ឈ្មោះប្តី ឬប្រពន្ធ** របស់អ្នក៖"
@@ -123,7 +140,6 @@ if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
-        # បន្ថែមការទទួលស្គាល់ /start ទាំងក្នុង Chat ផ្ទាល់ និងក្នុង Group
         entry_points=[
             CommandHandler('start', start),
         ],
