@@ -3,7 +3,7 @@ import threading
 import logging
 import pandas as pd
 from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, 
     ContextTypes, ConversationHandler, filters
@@ -28,11 +28,10 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# កំណត់ជំហាននៃការសួរសំណួរ
 HEAD_NAME, SPOUSE_NAME, CHILD_INFO = range(3)
 EXCEL_FILE = "family_data.xlsx"
 
-# ⚠️ ជំនួសលេខ ID Admin របស់អ្នកនៅទីនេះ (មើលពី @userinfobot)
+# ⚠️ ជំនួសលេខ ID Admin របស់អ្នកនៅទីនេះ
 ADMIN_USER_ID = 2127600841 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -41,37 +40,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.message.from_user.id
     user_first_name = update.message.from_user.first_name
-    chat_type = update.message.chat.type
 
-    # ---------------- ពិនិត្យមើលថា តើគាត់ធ្លាប់បំពេញព័ត៌មានរួចហើយឬនៅ ----------------
     if os.path.exists(EXCEL_FILE):
         try:
             df = pd.read_excel(EXCEL_FILE)
             if 'Telegram User ID' in df.columns and user_id in df['Telegram User ID'].values:
                 await update.message.reply_text(
-                    f"⚠️ សុំទោស {user_first_name}! គណនីរបស់អ្នកបានបំពេញព័ត៌មាននៅក្នុងប្រព័ន្ធរួចរាល់ហើយ។\n"
-                    f"អ្នកមិនអាចបញ្ចូលទិន្នន័យសាជាថ្មីម្តងទៀតបានទេ។"
+                    f"⚠️ **ជម្រាបសួរ {user_first_name}!** គណនីរបស់អ្នកបានបំពេញព័ត៌មាននៅក្នុងប្រព័ន្ធរួចរាល់ហើយ។\n\n"
+                    f"ប្រសិនបើចង់កែប្រែព័ត៌មាន សូមទាក់ទងទៅ Admin។"
                 )
                 return ConversationHandler.END
         except Exception as e:
             logging.error(f"Error reading Excel file: {e}")
-    # --------------------------------------------------------------------------------
 
-    # ប្រសិនបើចុច /start នៅក្នុង Group ឱ្យលោតប៊ូតុងទៅ Private Chat
-    if chat_type in ['group', 'supergroup']:
-        bot_username = context.bot.username
-        keyboard = [
-            [InlineKeyboardButton("💬 ចុចទីនេះដើម្បីបំពេញព័ត៌មាន (Private)", url=f"https://t.me/{bot_username}?start=fill_data")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await update.message.reply_text(
-            f"ជម្រាបសួរ {user_first_name}! ដើម្បីរក្សាការសម្ងាត់ព័ត៌មាន សូមចុចប៊ូតុងខាងក្រោមដើម្បីបំពេញព័ត៌មាននៅក្នុង Chat ផ្ទាល់ជាមួយ Bot ៖",
-            reply_markup=reply_markup
-        )
-        return ConversationHandler.END
-
-    # ប្រសិនបើនៅក្នុង Private Chat
     await update.message.reply_text(
         f"ជម្រាបសួរ {user_first_name}! នេះជាប្រព័ន្ធប្រមូលទិន្នន័យបច្ចុប្បន្នភាពសហព័ន្ធ និងកូនក្នុងបន្ទុក។\n\n"
         f"១. សូមបញ្ចូល **ឈ្មោះពេញរបស់មន្ត្រី/បុគ្គលិក (ម្ចាស់សាមីខ្លួន)** ៖"
@@ -91,7 +72,7 @@ async def get_spouse_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "៣. សូមបញ្ចូល **ព័ត៌មានកូនក្នុងបន្ទុក អាយុ ១៥ ដល់ ២៥ ឆ្នាំ (ជាសិស្ស-និស្សិត)** ៖\n\n"
         "រៀបរាប់តាមទម្រង់៖ `ឈ្មោះកូន - អាយុ - កំពុងសិក្សាថ្នាក់/សាលា`\n"
-        "*(ឧទាហរណ៍៖ សុខ ចាន់ - ១៨ ឆ្នាំ - សិស្សវិទ្យាល័យ ឬ វ៉ាន់នី - ២០ ឆ្នាំ - និស្សិតឆ្នាំទី២)*\n\n"
+        "*(ឧទាហរណ៍៖ សុខ ចាន់ - ១៨ ឆ្នាំ - សិស្សវិទ្យាល័យ)*\n\n"
         "*(ប្រសិនបើគ្មានកូនក្នុងលក្ខខណ្ឌនេះទេ សូមវាយពាក្យថា 'គ្មាន')*"
     )
     return CHILD_INFO
@@ -101,7 +82,6 @@ async def save_to_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_name = update.message.from_user.full_name
 
-    # បង្កើត Structure តារាង Excel ឱ្យមានរបៀបរៀបរយ
     new_data = {
         'Telegram User ID': [user_id],
         'អ្នកបញ្ចូលទិន្នន័យ': [user_name],
@@ -137,10 +117,48 @@ async def export_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_document(
             document=open(EXCEL_FILE, 'rb'),
             filename=EXCEL_FILE,
-            caption="📊 នេះជាបញ្ជីឈ្មោះបច្ចុប្បន្នភាព សហព័ន្ធគ្មានមុខរបរ និងកូនក្នុងបន្ទុកអាយុ ១៥-២៥ឆ្នាំ!"
+            caption="📊 នេះជាបញ្ជីឈ្មោះបច្ចុប្បន្នភាព!"
         )
     else:
         await update.message.reply_text("មិនទាន់មានទិន្នន័យនៅឡើយទេ។")
+
+async def reset_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id != ADMIN_USER_ID:
+        return
+
+    if os.path.exists(EXCEL_FILE):
+        os.remove(EXCEL_FILE)
+        await update.message.reply_text("🧹 បានលុបទិន្នន័យចាស់រៀបរយ!")
+    else:
+        await update.message.reply_text("គ្មានទិន្នន័យត្រូវលុបទេ។")
+
+# ----------------- 🗑️ FEATURE ថ្មី៖ លុបសមាជិកជាក់លាក់ -----------------
+async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+    if user_id != ADMIN_USER_ID:
+        await update.message.reply_text("❌ សុំទោស! មានតែ Admin ប៉ុណ្ណោះដែលមានសិទ្ធិប្រើ Command នេះ។")
+        return
+
+    if not context.args:
+        await update.message.reply_text("⚠️ សូមវាយបញ្ចូល ID ដែលត្រូវលុប។\nឧទាហរណ៍៖ `/delete_user 123456789`", parse_mode="Markdown")
+        return
+
+    target_id = int(context.args[0])
+
+    if os.path.exists(EXCEL_FILE):
+        df = pd.read_excel(EXCEL_FILE)
+        if 'Telegram User ID' in df.columns and target_id in df['Telegram User ID'].values:
+            # លុបបន្ទាត់ទិន្នន័យដែលមាន ID នោះចេញ
+            df = df[df['Telegram User ID'] != target_id]
+            df.to_excel(EXCEL_FILE, index=False)
+            await update.message.reply_text(f"🗑️ បានលុបទិន្នន័យសមាជិកដែលមាន ID `{target_id}` ចេញពីប្រព័ន្ធជោគជ័យ!\nឥឡូវគាត់អាចចូលបំពេញឡើងវិញបាន។", parse_mode="Markdown")
+        else:
+            await update.message.reply_text(f"❌ រកមិនឃើញ ID `{target_id}` នៅក្នុងបញ្ជី Excel ទេ។", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("មិនទាន់មានទិន្នន័យនៅឡើយទេ។")
+# ------------------------------------------------------------------------
 
 if __name__ == '__main__':
     # ⚠️ ជំនួស Token របស់បងនៅទីនេះ
@@ -165,5 +183,7 @@ if __name__ == '__main__':
 
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler('export', export_excel))
+    app.add_handler(CommandHandler('reset', reset_data))
+    app.add_handler(CommandHandler('delete_user', delete_user))
 
     app.run_polling()
