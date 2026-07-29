@@ -75,7 +75,18 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("បានបោះបង់ប្រតិបត្តិការ។")
     return ConversationHandler.END
 
+# ⚠️ ជំនួសលេខ 123456789 ដោយ Telegram User ID ពិតប្រាកដរបស់បង (ជាលេខ)
+ADMIN_USER_ID = 2127600841 
+
 async def export_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+
+    # ពិនិត្យមើលថា តើអ្នកដែលវាយ /export ជា Admin ដែរឬទេ?
+    if user_id != ADMIN_USER_ID:
+        await update.message.reply_text("❌ សុំទោស! មានតែ Admin ប៉ុណ្ណោះដែលមានសិទ្ធិទាញយកឯកសារ Excel នេះបាន។")
+        return
+
+    # ប្រសិនបើជា Admin ឱ្យទាញយកបានធម្មតា
     if os.path.exists(EXCEL_FILE):
         await update.message.reply_document(
             document=open(EXCEL_FILE, 'rb'),
