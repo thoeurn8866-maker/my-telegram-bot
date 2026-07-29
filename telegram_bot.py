@@ -28,10 +28,11 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-SPOUSE_NAME, CHILDREN_NAME, CHILDREN_AGE = range(3)
+# កំណត់ជំហាននៃការសួរសំណួរ
+HEAD_NAME, SPOUSE_NAME, CHILD_INFO = range(3)
 EXCEL_FILE = "family_data.xlsx"
 
-# ⚠️ ជំនួសលេខ 123456789 ដោយ Telegram User ID របស់បង (មើលពី @userinfobot)
+# ⚠️ ជំនួសលេខ ID Admin របស់អ្នកនៅទីនេះ (មើលពី @userinfobot)
 ADMIN_USER_ID = 2127600841 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,10 +57,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logging.error(f"Error reading Excel file: {e}")
     # --------------------------------------------------------------------------------
 
-    # ប្រសិនបើចុច /start នៅក្នុង Telegram Group
+    # ប្រសិនបើចុច /start នៅក្នុង Group ឱ្យលោតប៊ូតុងទៅ Private Chat
     if chat_type in ['group', 'supergroup']:
         bot_username = context.bot.username
-        # បង្កើតប៊ូតុងសម្រាប់ចុចទៅ Private Chat
         keyboard = [
             [InlineKeyboardButton("💬 ចុចទីនេះដើម្បីបំពេញព័ត៌មាន (Private)", url=f"https://t.me/{bot_username}?start=fill_data")]
         ]
@@ -71,34 +71,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return ConversationHandler.END
 
-    # ប្រសិនបើនៅក្នុង Private Chat ចាប់ផ្តើមសួរសំណួរ
+    # ប្រសិនបើនៅក្នុង Private Chat
     await update.message.reply_text(
-        f"ជម្រាបសួរ {user_first_name}! ខ្ញុំជា Bot កត់ត្រាទិន្នន័យគ្រួសារ។\n\n"
-        f"សូមបញ្ចូល **ឈ្មោះប្តី ឬប្រពន្ធ** របស់អ្នក៖"
+        f"ជម្រាបសួរ {user_first_name}! នេះជាប្រព័ន្ធប្រមូលទិន្នន័យបច្ចុប្បន្នភាពសហព័ន្ធ និងកូនក្នុងបន្ទុក។\n\n"
+        f"១. សូមបញ្ចូល **ឈ្មោះពេញរបស់មន្ត្រី/បុគ្គលិក (ម្ចាស់សាមីខ្លួន)** ៖"
+    )
+    return HEAD_NAME
+
+async def get_head_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['head_name'] = update.message.text
+    await update.message.reply_text(
+        "២. សូមបញ្ចូល **ឈ្មោះសហព័ន្ធ (ប្តី ឬប្រពន្ធ) ដែលគ្មានមុខរបរ** ៖\n"
+        "*(ចំណាំ៖ ប្រសិនបើគ្មាន ឬសហព័ន្ធមានមុខរបរ សូមវាយពាក្យថា 'គ្មាន')*"
     )
     return SPOUSE_NAME
 
 async def get_spouse_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['spouse_name'] = update.message.text
-    await update.message.reply_text("សូមបញ្ចូល **ឈ្មោះកូន** របស់អ្នក (បើមានច្រើន បំបែកដោយសញ្ញាក្បៀស `,`)៖")
-    return CHILDREN_NAME
-
-async def get_children_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['children_name'] = update.message.text
-    await update.message.reply_text("សូមបញ្ចូល **អាយុរបស់កូន**៖")
-    return CHILDREN_AGE
+    await update.message.reply_text(
+        "៣. សូមបញ្ចូល **ព័ត៌មានកូនក្នុងបន្ទុក អាយុ ១៥ ដល់ ២៥ ឆ្នាំ (ជាសិស្ស-និស្សិត)** ៖\n\n"
+        "រៀបរាប់តាមទម្រង់៖ `ឈ្មោះកូន - អាយុ - កំពុងសិក្សាថ្នាក់/សាលា`\n"
+        "*(ឧទាហរណ៍៖ សុខ ចាន់ - ១៨ ឆ្នាំ - សិស្សវិទ្យាល័យ ឬ វ៉ាន់នី - ២០ ឆ្នាំ - និស្សិតឆ្នាំទី២)*\n\n"
+        "*(ប្រសិនបើគ្មានកូនក្នុងលក្ខខណ្ឌនេះទេ សូមវាយពាក្យថា 'គ្មាន')*"
+    )
+    return CHILD_INFO
 
 async def save_to_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['children_age'] = update.message.text
+    context.user_data['child_info'] = update.message.text
     user_id = update.message.from_user.id
     user_name = update.message.from_user.full_name
 
+    # បង្កើត Structure តារាង Excel ឱ្យមានរបៀបរៀបរយ
     new_data = {
         'Telegram User ID': [user_id],
         'អ្នកបញ្ចូលទិន្នន័យ': [user_name],
-        'ឈ្មោះប្តី/ប្រពន្ធ': [context.user_data['spouse_name']],
-        'ឈ្មោះកូន': [context.user_data['children_name']],
-        'អាយុកូន': [context.user_data['children_age']]
+        'ឈ្មោះមន្ត្រី/បុគ្គលិក': [context.user_data['head_name']],
+        'សហព័ន្ធគ្មានមុខរបរ (ប្តី/ប្រពន្ធ)': [context.user_data['spouse_name']],
+        'ព័ត៌មានកូនបន្ទុក (អាយុ ១៥-២៥ ឆ្នាំ ជាសិស្ស-និស្សិត)': [context.user_data['child_info']]
     }
     
     df_new = pd.DataFrame(new_data)
@@ -110,7 +119,7 @@ async def save_to_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         df_new.to_excel(EXCEL_FILE, index=False)
 
-    await update.message.reply_text(f"✅ បានរក្សាទុកទិន្នន័យរបស់ {user_name} ជោគជ័យ!")
+    await update.message.reply_text(f"✅ **បានរក្សាទុកទិន្នន័យបច្ចុប្បន្នភាពរបស់ {context.user_data['head_name']} ជោគជ័យ!**")
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -128,7 +137,7 @@ async def export_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_document(
             document=open(EXCEL_FILE, 'rb'),
             filename=EXCEL_FILE,
-            caption="📊 នេះជាឯកសារ Excel ទិន្នន័យដែលបានប្រមូល!"
+            caption="📊 នេះជាបញ្ជីឈ្មោះបច្ចុប្បន្នភាព សហព័ន្ធគ្មានមុខរបរ និងកូនក្នុងបន្ទុកអាយុ ១៥-២៥ឆ្នាំ!"
         )
     else:
         await update.message.reply_text("មិនទាន់មានទិន្នន័យនៅឡើយទេ។")
@@ -144,9 +153,9 @@ if __name__ == '__main__':
             CommandHandler('start', start),
         ],
         states={
+            HEAD_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_head_name)],
             SPOUSE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_spouse_name)],
-            CHILDREN_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_children_name)],
-            CHILDREN_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_to_excel)],
+            CHILD_INFO: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_to_excel)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         per_chat=True,
